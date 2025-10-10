@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -14,7 +15,7 @@ class UserController extends Controller
     public function index()
     {
         $users = User::all();
-        return response()->json(['data' => $users]);
+        return response()->json(['success' => true, 'data' => $users], 200);
     }
 
     /**
@@ -22,7 +23,19 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|max:255',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|min:8',
+        ]);
+
+        if($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 400);
+        }
+
+        $user = User::create($request->only('name', 'email', 'password'));
+
+        return response()->json(['success' => true, 'data' => ['user' => $user]], 201);
     }
 
     /**
@@ -30,7 +43,11 @@ class UserController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $user = User::find($id);
+        if(!$user) {
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
+        return response()->json(['success' => true, 'data' => $user], 200);
     }
 
     /**
@@ -38,7 +55,24 @@ class UserController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+       $user = User::find($id);
+        if(!$user) {
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'nullable|max:255',
+            'email' => 'nullable|email|unique:users,email,' . $id,
+            'password' => 'nullable|min:8',
+        ]);
+
+        if($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 400);
+        }
+
+        $user->update($request->only('name', 'email', 'password'));
+
+        return response()->json(['success' => true, 'data' => $user], 200);
     }
 
     /**
@@ -46,6 +80,12 @@ class UserController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $user = User::find($id);
+        if(!$user) {
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        $user->delete();
+        return response()->json(['success' => true, 'message' => 'User deleted'], 200);
     }
 }
